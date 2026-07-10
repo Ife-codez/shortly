@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint": "eslint .",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -21,6 +23,9 @@
   "devDependencies": {
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
-    "husky": "^9.1.7"
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "prettier": "^3.9.5"
   }
 }
