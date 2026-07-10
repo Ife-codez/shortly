@@ -1,0 +1,26 @@
+{
+  "name": "shortly",
+  "version": "1.0.0",
+  "description": "A URL shortener with click analytics. Users create short links, share them,\r and see how they perform: clicks over time, top referrers, device breakdown.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ife-codez/shortly.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ife-codez/shortly/issues"
+  },
+  "homepage": "https://github.com/Ife-codez/shortly#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "husky": "^9.1.7"
+  }
+}
