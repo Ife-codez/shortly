@@ -1,4 +1,6 @@
 const express = require('express');
+const { validateUrl } = require('./lib/validateUrl');
+
 const app = express();
 
 app.use(express.json());
@@ -7,8 +9,18 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/links', (req, res) => {
-  console.log('Received body:', req.body);
-  res.status(200).json({ received: req.body });
+ const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ error: 'url is required' });
+  }
+
+  const validation = validateUrl(url);
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
+  }
+
+  res.status(200).json({ received: url });
 });
 
 const PORT = process.env.PORT || 4000;
