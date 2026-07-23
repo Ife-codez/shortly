@@ -23,7 +23,13 @@ app.post('/links', async (req, res) => {
   }
    const slug = await generateUniqueSlug(pool);
 
- res.status(200).json({ slug, url });
+   const result = await pool.query(
+    `INSERT INTO links (slug, original_url, custom)
+     VALUES ($1, $2, $3)
+     RETURNING id, slug, original_url, created_at`,
+    [slug, url, false]
+  );
+ res.status(201).json(result.rows[0]);
 });
 
 const PORT = process.env.PORT || 4000;
