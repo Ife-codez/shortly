@@ -1,12 +1,11 @@
+const globals = require('globals');
 module.exports = [
   {
     languageOptions: {
       ecmaVersion: 'latest',
-      sourceType: 'module',
+      sourceType: 'commonjs',
       globals: {
-        require: 'readonly',
-        module: 'writable',
-        process: 'readonly',
+        ...globals.node,
       },
     },
     rules: {
