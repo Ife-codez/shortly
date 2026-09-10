@@ -15,7 +15,7 @@
   "description": "",
   "dependencies": {
     "express": "^5.2.1",
-    "nanoid": "^3.3.16",
+    "nanoid": "3.3.18",
     "pg": "^8.22.0"
   },
   "devDependencies": {
