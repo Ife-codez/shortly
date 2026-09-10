@@ -10,8 +10,9 @@ function validateUrl(input) {
     return { valid: false, error: 'URL must use http or https' };
   }
 
-  const ownHosts = ['localhost', '127.0.0.1'];
-  if (ownHosts.includes(parsed.hostname)) {
+  const normalizedHostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  const ownHostname = (process.env.SERVICE_HOSTNAME || 'localhost').toLowerCase();
+  if (normalizedHostname === ownHostname || normalizedHostname === '127.0.0.1') {
     return { valid: false, error: 'Cannot shorten a link to this service itself' };
   }
 
