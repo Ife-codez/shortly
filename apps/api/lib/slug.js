@@ -11,7 +11,7 @@ async function generateUniqueSlug(pool) {
   const MAX_ATTEMPTS = 5;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const candidate = generateSlug();
+    const candidate = exports.generateSlug();
     const alreadyTaken = await slugExists(pool, candidate);
 
     if (!alreadyTaken) {
@@ -21,4 +21,6 @@ async function generateUniqueSlug(pool) {
 
   throw new Error('Could not generate a unique slug after multiple attempts');
 }
-module.exports = { generateSlug, slugExists, generateUniqueSlug };
+exports.generateSlug = generateSlug;
+exports.slugExists = slugExists;
+exports.generateUniqueSlug = generateUniqueSlug;
