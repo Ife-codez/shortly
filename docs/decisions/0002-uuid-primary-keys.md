@@ -11,12 +11,23 @@ integers for all primary keys.
 ## Why
 An auto-incrementing integer is sequential and predictable — if link IDs are
 1, 2, 3..., anyone can guess the next one and enumerate every link in the
-database just by requesting /links/1, /links/2, /links/3, and so on. This is
-a well-known vulnerability category called IDOR (Insecure Direct Object
-Reference), and it also quietly exposes internal information, like roughly
-how many users or links exist. A UUID is not guessable in this way, so it
-closes off that entire class of problem by default, without needing extra
-application-level protection.
+database just by requesting /links/1, /links/2, /links/3, and so on. A UUID
+is not guessable in this way, so it closes off that specific enumeration
+problem, and it also avoids quietly exposing internal information like
+roughly how many users or links exist.
+
+It's important to be precise about what this actually buys, though: a UUID
+makes an ID hard to *guess*, but guessing is only one way an ID could be
+obtained — it could also leak through a shared link, a log file, or a
+referrer header. Using a UUID does not, by itself, mean a request is
+authorized. This is the actual distinction between authentication (who you
+are) and authorization (what you're allowed to touch), and it applies here
+too: the API must still separately check that the requesting user actually
+owns or has permission to access a given record, on every request, regardless
+of whether the ID is a UUID or an integer. UUIDs reduce the risk of casual
+enumeration (this is the category of vulnerability called IDOR — Insecure
+Direct Object Reference), but they are not a substitute for a real
+authorization check.
 
 ## Tradeoff
 UUIDs aren't free. They're 128 bits versus an integer's 32/64 bits, so they
