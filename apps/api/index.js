@@ -21,16 +21,33 @@ app.post('/links', async (req, res) => {
   if (!validation.valid) {
     return res.status(400).json({ error: validation.error });
   }
-   const slug = await generateUniqueSlug(pool);
+  const MAX_INSERT_ATTEMPTS = 3;
+  for (let attempt = 0; attempt < MAX_INSERT_ATTEMPTS; attempt++) {
+    try {
+      const slug = await generateUniqueSlug(pool);
 
-   const result = await pool.query(
-    `INSERT INTO links (slug, original_url, custom)
-     VALUES ($1, $2, $3)
-     RETURNING id, slug, original_url, created_at`,
-    [slug, url, false]
-  );
- res.status(201).json(result.rows[0]);
+      const result = await pool.query(
+        `INSERT INTO links (slug, original_url, custom)
+         VALUES ($1, $2, $3)
+         RETURNING id, slug, original_url, created_at`,
+        [slug, url, false]
+      );
+
+      return res.status(201).json(result.rows[0]);
+    } catch (err) {
+      if (err.code === '23505') {
+        // unique_violation on slug — another request grabbed it first, retry
+        continue;
+      }
+      console.error('Error creating link:', err);
+      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+    }
+  }
+
+  console.error('Failed to create link after multiple slug collision retries');
+  res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
+
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
