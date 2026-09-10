@@ -21,3 +21,15 @@ test('rejects a url pointing at localhost', () => {
   expect(result.valid).toBe(false);
   expect(result.error).toBe('Cannot shorten a link to this service itself');
 });
+
+test('rejects a url with a trailing dot on the hostname', () => {
+  const result = validateUrl('http://localhost.:4000/health');
+  expect(result.valid).toBe(false);
+  expect(result.error).toBe('Cannot shorten a link to this service itself');
+});
+
+test('rejects a url with mismatched hostname casing', () => {
+  const result = validateUrl('http://LOCALHOST:4000/health');
+  expect(result.valid).toBe(false);
+  expect(result.error).toBe('Cannot shorten a link to this service itself');
+});
