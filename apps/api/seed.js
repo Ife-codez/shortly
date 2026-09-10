@@ -5,6 +5,10 @@ const pool = new Pool({
 });
 
 async function seed() {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Refusing to run seed script against production. Aborting.');
+    process.exit(1);
+  }
   const client = await pool.connect();
 
   try {
