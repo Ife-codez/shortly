@@ -10,7 +10,10 @@ afterAll(async () => {
 
 afterEach(async () => {
   jest.restoreAllMocks();
-  await pool.query('DELETE FROM links WHERE slug IN ($1, $2)', ['FAKE001', 'FAKE002']);
+  await pool.query('DELETE FROM links WHERE slug IN ($1, $2)', [
+    'FAKE001',
+    'FAKE002',
+  ]);
 });
 
 test('generateSlug produces a 7-character string', () => {
@@ -46,7 +49,8 @@ test('generateUniqueSlug retries after a forced slug collision', async () => {
   );
 
   // Force generateSlug to return takenSlug first, then freeSlug second
-  jest.spyOn(slugModule, 'generateSlug')
+  jest
+    .spyOn(slugModule, 'generateSlug')
     .mockReturnValueOnce(takenSlug)
     .mockReturnValueOnce(freeSlug);
 
@@ -54,5 +58,4 @@ test('generateUniqueSlug retries after a forced slug collision', async () => {
 
   // It must have skipped the taken one and landed on the free one
   expect(result).toBe(freeSlug);
-
 });

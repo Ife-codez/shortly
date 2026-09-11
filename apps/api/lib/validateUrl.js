@@ -11,9 +11,17 @@ function validateUrl(input) {
   }
 
   const normalizedHostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
-  const ownHostname = (process.env.SERVICE_HOSTNAME || 'localhost').toLowerCase();
-  if (normalizedHostname === ownHostname || normalizedHostname === '127.0.0.1') {
-    return { valid: false, error: 'Cannot shorten a link to this service itself' };
+  const ownHostname = (
+    process.env.SERVICE_HOSTNAME || 'localhost'
+  ).toLowerCase();
+  if (
+    normalizedHostname === ownHostname ||
+    normalizedHostname === '127.0.0.1'
+  ) {
+    return {
+      valid: false,
+      error: 'Cannot shorten a link to this service itself',
+    };
   }
 
   return { valid: true };

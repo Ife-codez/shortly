@@ -11,7 +11,7 @@ app.get('/health', (req, res) => {
 });
 
 app.post('/links', async (req, res) => {
- const { url } = req.body;
+  const { url } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: 'url is required' });
@@ -40,14 +40,15 @@ app.post('/links', async (req, res) => {
         continue;
       }
       console.error('Error creating link:', err);
-      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+      return res
+        .status(500)
+        .json({ error: 'Something went wrong. Please try again.' });
     }
   }
 
   console.error('Failed to create link after multiple slug collision retries');
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
-
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
