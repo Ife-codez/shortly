@@ -15,7 +15,9 @@ async function seed() {
     await client.query('BEGIN');
 
     // Clear existing data first, so this script is safe to re-run
-    await client.query('TRUNCATE click_events, links, users RESTART IDENTITY CASCADE');
+    await client.query(
+      'TRUNCATE click_events, links, users RESTART IDENTITY CASCADE'
+    );
 
     const userResult = await client.query(
       `INSERT INTO users (email, password_hash)
@@ -36,7 +38,12 @@ async function seed() {
     await client.query(
       `INSERT INTO click_events (link_id, referrer, user_agent, ip_address)
        VALUES ($1, $2, $3, $4)`,
-      [linkId, 'https://google.com', 'Mozilla/5.0 (Windows NT 10.0)', '192.168.1.1']
+      [
+        linkId,
+        'https://google.com',
+        'Mozilla/5.0 (Windows NT 10.0)',
+        '192.168.1.1',
+      ]
     );
 
     await client.query('COMMIT');

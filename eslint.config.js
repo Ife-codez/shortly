@@ -14,6 +14,14 @@ module.exports = [
     },
   },
   {
+    files: ['**/*.test.js'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+      },
+    },
+  },
+  {
     ignores: ['node_modules/**', '.next/**', 'dist/**'],
   },
 ];
