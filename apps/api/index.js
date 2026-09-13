@@ -50,6 +50,19 @@ app.post('/links', async (req, res) => {
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
+app.get('/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  const result = await pool.query('SELECT original_url FROM links WHERE slug = $1', [slug]);
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({ error: 'Link not found' });
+  }
+
+  const { original_url } = result.rows[0];
+  res.redirect(302, original_url);
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`API listening on port ${PORT}`);
