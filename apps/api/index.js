@@ -53,14 +53,21 @@ app.post('/links', async (req, res) => {
 app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
 
-  const result = await pool.query('SELECT original_url FROM links WHERE slug = $1', [slug]);
+  const result = await pool.query('SELECT id, original_url FROM links WHERE slug = $1', [slug]);
 
   if (result.rows.length === 0) {
     return res.status(404).json({ error: 'Link not found' });
   }
 
-  const { original_url } = result.rows[0];
+  const { id: linkId, original_url } = result.rows[0];
   res.redirect(302, original_url);
+  pool.query(
+    `INSERT INTO click_events (link_id, referrer, user_agent, ip_address)
+      VALUES ($1, $2, $3, $4)`,
+    [linkId, req.get('referrer') || null, req.get('user-agent') || null, req.ip]
+  ).catch((err) => {
+    console.error('Failed to record click:', err);
+  });
 });
 
 const PORT = process.env.PORT || 4000;
