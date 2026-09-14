@@ -36,7 +36,7 @@ jobs:
         working-directory: apps/api
         run: npm ci
 
-         - name: Lint
+      - name: Lint
         working-directory: apps/api
         run: npm run lint
 
