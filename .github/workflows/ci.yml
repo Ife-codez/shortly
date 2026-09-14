@@ -8,6 +8,21 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: shortly_user
+          POSTGRES_PASSWORD: shortly_pass
+          POSTGRES_DB: shortly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shortly_user -d shortly"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,3 +35,19 @@ jobs:
       - name: Install dependencies
         working-directory: apps/api
         run: npm ci
+
+         - name: Lint
+        working-directory: apps/api
+        run: npm run lint
+
+      - name: Run migrations
+        working-directory: apps/api
+        run: npx node-pg-migrate up
+        env:
+          DATABASE_URL: postgresql://shortly_user:shortly_pass@localhost:5432/shortly
+
+      - name: Run tests
+        working-directory: apps/api
+        run: npx jest
+        env:
+          DATABASE_URL: postgresql://shortly_user:shortly_pass@localhost:5432/shortly
