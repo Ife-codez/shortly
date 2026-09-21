@@ -1,10 +1,16 @@
 const express = require('express');
 const { Pool } = require('pg');
+const { createClient } = require('redis');
 const { validateUrl } = require('./lib/validateUrl');
 const { generateUniqueSlug } = require('./lib/slug');
 
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+const redisClient = createClient({ url: process.env.REDIS_URL });
+redisClient.on('error', (err) => console.error('Redis error:', err));
+redisClient.connect();
+
 app.use(express.json());
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'yes' });
@@ -52,15 +58,28 @@ app.post('/links', async (req, res) => {
 
 app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
+
   try {
-    const result = await pool.query('SELECT id, original_url FROM links WHERE slug = $1', [slug]);
-  
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Link not found' });
+    const cached = await redisClient.get(`slug:${slug}`);
+
+    let linkId, original_url;
+
+    if (cached) {
+      ({ id: linkId, original_url } = JSON.parse(cached));
+    } else {
+      const result = await pool.query('SELECT id, original_url FROM links WHERE slug = $1', [slug]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Link not found' });
+      }
+
+      ({ id: linkId, original_url } = result.rows[0]);
+
+      await redisClient.set(`slug:${slug}`, JSON.stringify({ id: linkId, original_url }));
     }
-  
-    const { id: linkId, original_url } = result.rows[0];
+
     res.redirect(302, original_url);
+
     pool.query(
       `INSERT INTO click_events (link_id, referrer, user_agent, ip_address)
         VALUES ($1, $2, $3, $4)`,
@@ -68,10 +87,9 @@ app.get('/:slug', async (req, res) => {
     ).catch((err) => {
       console.error('Failed to record click:', err);
     });
-
   } catch (err) {
     console.error('Error resolving redirect:', err);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
-module.exports = { app, pool };
+module.exports = { app, pool, redisClient };
