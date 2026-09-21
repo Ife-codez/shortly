@@ -16,7 +16,8 @@
   "dependencies": {
     "express": "^5.2.1",
     "nanoid": "3.3.18",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "redis": "^6.2.1"
   },
   "devDependencies": {
     "jest": "^30.4.2",
