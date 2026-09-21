@@ -1,8 +1,9 @@
 const request = require('supertest');
-const { app, pool } = require('./app');
+const { app, pool, redisClient } = require('./app');
 
 afterAll(async () => {
   await pool.end();
+  await redisClient.quit();
 });
 
 test('redirects to the original url for a known slug', async () => {
@@ -53,4 +54,49 @@ test('records a click event when a link is visited', async () => {
 
   await pool.query('DELETE FROM click_events WHERE link_id = $1', [linkId]);
   await pool.query('DELETE FROM links WHERE id = $1', [linkId]);
+});
+
+test('a cached slug redirects correctly even if postgres is unavailable', async () => {
+  const linkResult = await pool.query(
+    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3) RETURNING id`,
+    ['cachetest1', 'https://example.com/cache-test', false]
+  );
+  const linkId = linkResult.rows[0].id;
+
+  // First request — populates the cache
+  await request(app).get('/cachetest1');
+
+  // Manually clear the row from Postgres, but leave the Redis cache intact
+  await pool.query('DELETE FROM links WHERE id = $1', [linkId]);
+
+  // Second request — should still succeed, purely from cache
+  const response = await request(app).get('/cachetest1');
+
+  expect(response.status).toBe(302);
+  expect(response.headers.location).toBe('https://example.com/cache-test');
+
+  await redisClient.del('slug:cachetest1');
+});
+
+test('deleting a link removes it from the cache', async () => {
+  await pool.query(
+    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3)`,
+    ['cachetest2', 'https://example.com/delete-cache-test', false]
+  );
+
+  // Visit once, to populate the cache
+  await request(app).get('/cachetest2');
+
+  const cachedBefore = await redisClient.get('slug:cachetest2');
+  expect(cachedBefore).not.toBeNull();
+
+  // Delete the link through the real endpoint
+  await request(app).delete('/links/cachetest2');
+
+  const cachedAfter = await redisClient.get('slug:cachetest2');
+  expect(cachedAfter).toBeNull();
+
+  // Confirm the slug now correctly 404s
+  const response = await request(app).get('/cachetest2');
+  expect(response.status).toBe(404);
 });
