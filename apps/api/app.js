@@ -92,4 +92,23 @@ app.get('/:slug', async (req, res) => {
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
+
+app.delete('/links/:slug', async (req, res) => {
+  const { slug } = req.params;
+
+  try {
+    const result = await pool.query('DELETE FROM links WHERE slug = $1 RETURNING id', [slug]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+
+    await redisClient.del(`slug:${slug}`);
+
+    res.status(204).send();
+  } catch (err) {
+    console.error('Error deleting link:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
 module.exports = { app, pool, redisClient };
