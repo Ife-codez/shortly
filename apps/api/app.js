@@ -60,7 +60,12 @@ app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
 
   try {
-    const cached = await redisClient.get(`slug:${slug}`);
+    let cached = null
+    try {
+      cached = await redisClient.get(`slug:${slug}`);
+    } catch (err) {
+      console.error('Redis unavailable, falling back to database:', err);
+    }
 
     let linkId, original_url;
 
@@ -75,7 +80,11 @@ app.get('/:slug', async (req, res) => {
 
       ({ id: linkId, original_url } = result.rows[0]);
 
-      await redisClient.set(`slug:${slug}`, JSON.stringify({ id: linkId, original_url }));
+      try {
+        await redisClient.set(`slug:${slug}`, JSON.stringify({ id: linkId, original_url }));
+      } catch (err) {
+        console.error('Failed to populate cache:', err);
+      }
     }
 
     res.redirect(302, original_url);
@@ -93,22 +102,8 @@ app.get('/:slug', async (req, res) => {
   }
 });
 
-app.delete('/links/:slug', async (req, res) => {
-  const { slug } = req.params;
-
-  try {
-    const result = await pool.query('DELETE FROM links WHERE slug = $1 RETURNING id', [slug]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Link not found' });
-    }
-
-    await redisClient.del(`slug:${slug}`);
-
-    res.status(204).send();
-  } catch (err) {
-    console.error('Error deleting link:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
+// DELETE /links/:slug intentionally removed for now.
+// Anyone who knows a slug could delete it with no ownership check,
+// since authentication doesn't exist yet. Will be re-added
+// once a link's owner can be verified against the authenticated user.
 module.exports = { app, pool, redisClient };
