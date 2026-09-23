@@ -6,6 +6,23 @@ afterAll(async () => {
   await redisClient.quit();
 });
 
+afterEach(async () => {
+  await pool.query("DELETE FROM click_events WHERE link_id IN (SELECT id FROM links WHERE slug LIKE 'test%' OR slug LIKE 'cache%')");
+  await pool.query("DELETE FROM links WHERE slug LIKE 'test%' OR slug LIKE 'cache%'");
+  await redisClient.del(['slug:testslug1', 'slug:testslug2', 'slug:cachetest1']);
+});
+
+async function waitForClickEvent(linkId, maxAttempts = 10, delayMs = 100) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const result = await pool.query('SELECT * FROM click_events WHERE link_id = $1', [linkId]);
+    if (result.rows.length > 0) {
+      return result.rows;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return [];
+}
+
 test('redirects to the original url for a known slug', async () => {
   await pool.query(
     `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3)`,
@@ -17,7 +34,6 @@ test('redirects to the original url for a known slug', async () => {
   expect(response.status).toBe(302);
   expect(response.headers.location).toBe('https://example.com/redirect-test');
 
-  await pool.query('DELETE FROM links WHERE slug = $1', ['testslug1']);
 });
 
 test('returns 404 for an unknown slug', async () => {
@@ -41,19 +57,12 @@ test('records a click event when a link is visited', async () => {
 
   // Give the background insert a brief moment to complete,
   // since the redirect responds before the click is recorded
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  const clickRows = await waitForClickEvent(linkId);
 
-  const clickResult = await pool.query(
-    'SELECT * FROM click_events WHERE link_id = $1',
-    [linkId]
-  );
+  expect(clickRows.length).toBe(1);
+  expect(clickRows[0].referrer).toBe('https://google.com');
+  expect(clickRows[0].user_agent).toBe('Test Agent');
 
-  expect(clickResult.rows.length).toBe(1);
-  expect(clickResult.rows[0].referrer).toBe('https://google.com');
-  expect(clickResult.rows[0].user_agent).toBe('Test Agent');
-
-  await pool.query('DELETE FROM click_events WHERE link_id = $1', [linkId]);
-  await pool.query('DELETE FROM links WHERE id = $1', [linkId]);
 });
 
 test('a cached slug redirects correctly even if postgres is unavailable', async () => {
