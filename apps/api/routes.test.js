@@ -66,8 +66,17 @@ test('a cached slug redirects correctly even if postgres is unavailable', async 
   // First request — populates the cache
   await request(app).get('/cachetest1');
 
+  // Let the async click insert finish before deleting the row
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
   // Manually clear the row from Postgres, but leave the Redis cache intact
+  await pool.query('DELETE FROM click_events WHERE link_id = $1', [linkId]);
   await pool.query('DELETE FROM links WHERE id = $1', [linkId]);
+
+  // Note: the second request below will also attempt to record a click,
+  // which will fail (and log an error) since I've deliberately deleted
+  // the link row — this is expected and confirms error handling works
+  // even in this edge case.
 
   // Second request — should still succeed, purely from cache
   const response = await request(app).get('/cachetest1');
@@ -78,25 +87,5 @@ test('a cached slug redirects correctly even if postgres is unavailable', async 
   await redisClient.del('slug:cachetest1');
 });
 
-test('deleting a link removes it from the cache', async () => {
-  await pool.query(
-    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3)`,
-    ['cachetest2', 'https://example.com/delete-cache-test', false]
-  );
-
-  // Visit once, to populate the cache
-  await request(app).get('/cachetest2');
-
-  const cachedBefore = await redisClient.get('slug:cachetest2');
-  expect(cachedBefore).not.toBeNull();
-
-  // Delete the link through the real endpoint
-  await request(app).delete('/links/cachetest2');
-
-  const cachedAfter = await redisClient.get('slug:cachetest2');
-  expect(cachedAfter).toBeNull();
-
-  // Confirm the slug now correctly 404s
-  const response = await request(app).get('/cachetest2');
-  expect(response.status).toBe(404);
-});
+// Test for DELETE /links/:slug removed along with the route itself —
+// see app.js for why (no ownership check exists until auth is added).
