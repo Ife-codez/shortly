@@ -1,10 +1,16 @@
 const express = require('express');
 const { Pool } = require('pg');
+const { createClient } = require('redis');
 const { validateUrl } = require('./lib/validateUrl');
 const { generateUniqueSlug } = require('./lib/slug');
 
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+const redisClient = createClient({ url: process.env.REDIS_URL });
+redisClient.on('error', (err) => console.error('Redis error:', err));
+redisClient.connect();
+
 app.use(express.json());
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'yes' });
@@ -52,15 +58,37 @@ app.post('/links', async (req, res) => {
 
 app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
+
   try {
-    const result = await pool.query('SELECT id, original_url FROM links WHERE slug = $1', [slug]);
-  
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Link not found' });
+    let cached = null
+    try {
+      cached = await redisClient.get(`slug:${slug}`);
+    } catch (err) {
+      console.error('Redis unavailable, falling back to database:', err);
     }
-  
-    const { id: linkId, original_url } = result.rows[0];
+
+    let linkId, original_url;
+
+    if (cached) {
+      ({ id: linkId, original_url } = JSON.parse(cached));
+    } else {
+      const result = await pool.query('SELECT id, original_url FROM links WHERE slug = $1', [slug]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Link not found' });
+      }
+
+      ({ id: linkId, original_url } = result.rows[0]);
+
+      try {
+        await redisClient.set(`slug:${slug}`, JSON.stringify({ id: linkId, original_url }));
+      } catch (err) {
+        console.error('Failed to populate cache:', err);
+      }
+    }
+
     res.redirect(302, original_url);
+
     pool.query(
       `INSERT INTO click_events (link_id, referrer, user_agent, ip_address)
         VALUES ($1, $2, $3, $4)`,
@@ -68,10 +96,14 @@ app.get('/:slug', async (req, res) => {
     ).catch((err) => {
       console.error('Failed to record click:', err);
     });
-
   } catch (err) {
     console.error('Error resolving redirect:', err);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
-module.exports = { app, pool };
+
+// DELETE /links/:slug intentionally removed for now.
+// Anyone who knows a slug could delete it with no ownership check,
+// since authentication doesn't exist yet. Will be re-added
+// once a link's owner can be verified against the authenticated user.
+module.exports = { app, pool, redisClient };

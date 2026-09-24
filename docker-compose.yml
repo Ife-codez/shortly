@@ -11,6 +11,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      cache:
+        condition: service_healthy
 
   db:
     image: postgres:16-alpine
@@ -27,6 +29,17 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
+
+  cache:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
