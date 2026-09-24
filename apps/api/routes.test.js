@@ -10,6 +10,7 @@ afterEach(async () => {
   await pool.query("DELETE FROM click_events WHERE link_id IN (SELECT id FROM links WHERE slug LIKE 'test%' OR slug LIKE 'cache%')");
   await pool.query("DELETE FROM links WHERE slug LIKE 'test%' OR slug LIKE 'cache%'");
   await redisClient.del(['slug:testslug1', 'slug:testslug2', 'slug:cachetest1']);
+  jest.restoreAllMocks();
 });
 
 async function waitForClickEvent(linkId, maxAttempts = 10, delayMs = 100) {
@@ -55,8 +56,7 @@ test('records a click event when a link is visited', async () => {
     .set('Referer', 'https://google.com')
     .set('User-Agent', 'Test Agent');
 
-  // Give the background insert a brief moment to complete,
-  // since the redirect responds before the click is recorded
+  // Give the background insert a brief moment to complete
   const clickRows = await waitForClickEvent(linkId);
 
   expect(clickRows.length).toBe(1);
@@ -65,35 +65,32 @@ test('records a click event when a link is visited', async () => {
 
 });
 
-test('a cached slug redirects correctly even if postgres is unavailable', async () => {
+test('a cached slug does not query postgres on the second request', async () => {
   const linkResult = await pool.query(
     `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3) RETURNING id`,
     ['cachetest1', 'https://example.com/cache-test', false]
   );
   const linkId = linkResult.rows[0].id;
 
-  // First request — populates the cache
+  // First request — populates the cache, link stays in Postgres
   await request(app).get('/cachetest1');
+  await waitForClickEvent(linkId);
 
-  // Let the async click insert finish before deleting the row
-  await new Promise((resolve) => setTimeout(resolve, 200));
+  // spy on pool.query to inspect what it's called with
+  const querySpy = jest.spyOn(pool, 'query');
 
-  // Manually clear the row from Postgres, but leave the Redis cache intact
-  await pool.query('DELETE FROM click_events WHERE link_id = $1', [linkId]);
-  await pool.query('DELETE FROM links WHERE id = $1', [linkId]);
-
-  // Note: the second request below will also attempt to record a click,
-  // which will fail (and log an error) since I've deliberately deleted
-  // the link row — this is expected and confirms error handling works
-  // even in this edge case.
-
-  // Second request — should still succeed, purely from cache
   const response = await request(app).get('/cachetest1');
 
   expect(response.status).toBe(302);
   expect(response.headers.location).toBe('https://example.com/cache-test');
 
-  await redisClient.del('slug:cachetest1');
+  // Confirm the slug lookup SELECT was never issued on this second request
+  const slugLookupCalls = querySpy.mock.calls.filter(([sql]) =>
+    sql.includes('SELECT id, original_url FROM links')
+  );
+  expect(slugLookupCalls.length).toBe(0);
+
+  querySpy.mockRestore();
 });
 
 // Test for DELETE /links/:slug removed along with the route itself —
