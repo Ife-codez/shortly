@@ -3,7 +3,7 @@ const { Pool } = require('pg');
 const { createClient } = require('redis');
 const { validateUrl } = require('./lib/validateUrl');
 const { generateUniqueSlug } = require('./lib/slug');
-
+const bcrypt = require('bcrypt');
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -98,6 +98,31 @@ app.get('/:slug', async (req, res) => {
     });
   } catch (err) {
     console.error('Error resolving redirect:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+app.post('/auth/signup', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required' });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at`,
+      [email, passwordHash]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+    console.error('Error creating user:', err);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
