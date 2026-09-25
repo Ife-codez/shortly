@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt');
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const jwt = require('jsonwebtoken');
+const { requireAuth } = require('./middleware/auth');
 
 const redisClient = createClient({ url: process.env.REDIS_URL });
 redisClient.on('error', (err) => console.error('Redis error:', err));
@@ -17,7 +18,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'yes' });
 });
 
-app.post('/links', async (req, res) => {
+app.post('/links', requireAuth, async (req, res) => {
   const { url } = req.body;
 
   if (!url) {
