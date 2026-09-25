@@ -35,10 +35,10 @@ app.post('/links', requireAuth, async (req, res) => {
       const slug = await generateUniqueSlug(pool);
 
       const result = await pool.query(
-        `INSERT INTO links (slug, original_url, custom)
-         VALUES ($1, $2, $3)
+        `INSERT INTO links (slug, original_url, custom, user_id)
+         VALUES ($1, $2, $3, $4)
          RETURNING id, slug, original_url, created_at`,
-        [slug, url, false]
+        [slug, url, false, req.userId]
       );
 
       return res.status(201).json(result.rows[0]);
