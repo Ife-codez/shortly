@@ -6,6 +6,7 @@ const { generateUniqueSlug } = require('./lib/slug');
 const bcrypt = require('bcrypt');
 const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const jwt = require('jsonwebtoken');
 
 const redisClient = createClient({ url: process.env.REDIS_URL });
 redisClient.on('error', (err) => console.error('Redis error:', err));
@@ -123,6 +124,37 @@ app.post('/auth/signup', async (req, res) => {
       return res.status(409).json({ error: 'An account with this email already exists' });
     }
     console.error('Error creating user:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+app.post('/auth/signin', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'email and password are required' });
+  }
+
+  try {
+    const result = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const { id: userId, password_hash } = result.rows[0];
+
+    const passwordMatches = await bcrypt.compare(password, password_hash);
+
+    if (!passwordMatches) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+    res.status(200).json({ token });
+  } catch (err) {
+    console.error('Error signing in:', err);
     res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
