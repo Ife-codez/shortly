@@ -57,3 +57,4 @@ jobs:
         env:
           DATABASE_URL: postgresql://shortly_user:shortly_pass@localhost:5432/shortly
           REDIS_URL: redis://localhost:6379
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}

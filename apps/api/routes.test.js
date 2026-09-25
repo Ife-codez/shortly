@@ -26,8 +26,8 @@ async function waitForClickEvent(linkId, maxAttempts = 10, delayMs = 100) {
 
 test('redirects to the original url for a known slug', async () => {
   await pool.query(
-    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3)`,
-    ['testslug1', 'https://example.com/redirect-test', false]
+    `INSERT INTO links (slug, original_url, custom, user_id) VALUES ($1, $2, $3, $4)`,
+    ['testslug1', 'https://example.com/redirect-test', false, '00000000-0000-0000-0000-000000000000']
   );
 
   const response = await request(app).get('/testslug1');
@@ -46,8 +46,8 @@ test('returns 404 for an unknown slug', async () => {
 
 test('records a click event when a link is visited', async () => {
   const linkResult = await pool.query(
-    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3) RETURNING id`,
-    ['testslug2', 'https://example.com/click-test', false]
+    `INSERT INTO links (slug, original_url, custom, user_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+    ['testslug2', 'https://example.com/click-test', false, '00000000-0000-0000-0000-000000000000']
   );
   const linkId = linkResult.rows[0].id;
 
@@ -67,8 +67,8 @@ test('records a click event when a link is visited', async () => {
 
 test('a cached slug does not query postgres on the second request', async () => {
   const linkResult = await pool.query(
-    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3) RETURNING id`,
-    ['cachetest1', 'https://example.com/cache-test', false]
+    `INSERT INTO links (slug, original_url, custom, user_id) VALUES ($1, $2, $3, $4) RETURNING id`,
+    ['cachetest1', 'https://example.com/cache-test', false, '00000000-0000-0000-0000-000000000000']
   );
   const linkId = linkResult.rows[0].id;
 
