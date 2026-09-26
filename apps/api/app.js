@@ -58,6 +58,43 @@ app.post('/links', requireAuth, async (req, res) => {
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
+app.get('/links', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, slug, original_url, custom, created_at FROM links WHERE user_id = $1 ORDER BY created_at DESC',
+      [req.userId]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error fetching links:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+app.get('/links/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query('SELECT id, slug, original_url, user_id, created_at FROM links WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+
+    const link = result.rows[0];
+
+    if (link.user_id !== req.userId) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+
+    res.status(200).json(link);
+  } catch (err) {
+    console.error('Error fetching link:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
 app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
 
@@ -160,28 +197,7 @@ app.post('/auth/signin', async (req, res) => {
   }
 });
 
-app.get('/links/:id', requireAuth, async (req, res) => {
-  const { id } = req.params;
 
-  try {
-    const result = await pool.query('SELECT id, slug, original_url, user_id, created_at FROM links WHERE id = $1', [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Link not found' });
-    }
-
-    const link = result.rows[0];
-
-    if (link.user_id !== req.userId) {
-      return res.status(404).json({ error: 'Link not found' });
-    }
-
-    res.status(200).json(link);
-  } catch (err) {
-    console.error('Error fetching link:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
 
 // DELETE /links/:slug intentionally removed for now.
 // Anyone who knows a slug could delete it with no ownership check,
