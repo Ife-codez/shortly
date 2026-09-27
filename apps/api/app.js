@@ -8,6 +8,7 @@ const app = express();
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const jwt = require('jsonwebtoken');
 const { requireAuth } = require('./middleware/auth');
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const redisClient = createClient({ url: process.env.REDIS_URL });
 redisClient.on('error', (err) => console.error('Redis error:', err));
@@ -58,6 +59,49 @@ app.post('/links', requireAuth, async (req, res) => {
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
+<<<<<<< Updated upstream
+=======
+app.get('/links', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, slug, original_url, custom, created_at FROM links WHERE user_id = $1 ORDER BY created_at DESC',
+      [req.userId]
+    );
+
+    res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error fetching links:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+app.get('/links/:id', requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+   if (!UUID_REGEX.test(id)) {
+    return res.status(400).json({ error: 'Invalid link id' });
+  }
+  try {
+    const result = await pool.query('SELECT id, slug, original_url, user_id, created_at FROM links WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+
+    const link = result.rows[0];
+
+    if (link.user_id !== req.userId) {
+      return res.status(404).json({ error: 'Link not found' });
+    }
+
+    res.status(200).json(link);
+  } catch (err) {
+    console.error('Error fetching link:', err);
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+});
+
+>>>>>>> Stashed changes
 app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
 
@@ -110,13 +154,17 @@ app.post('/auth/signup', async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
   }
+  const normalizedEmail = email.trim().toLowerCase();
+   if (password.length < 8) {
+    return res.status(400).json({ error: 'password must be at least 8 characters' });
+  }
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
       `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at`,
-      [email, passwordHash]
+      [normalizedEmail, passwordHash]
     );
 
     res.status(201).json(result.rows[0]);
@@ -135,9 +183,9 @@ app.post('/auth/signin', async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
   }
-
+  const normalizedEmail = email.trim().toLowerCase();
   try {
-    const result = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
+    const result = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [normalizedEmail]);
 
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid email or password' });
