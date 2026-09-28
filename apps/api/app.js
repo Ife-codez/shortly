@@ -4,10 +4,11 @@ const { createClient } = require('redis');
 const { validateUrl } = require('./lib/validateUrl');
 const { generateUniqueSlug } = require('./lib/slug');
 const bcrypt = require('bcrypt');
-const app = express();
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const jwt = require('jsonwebtoken');
 const { requireAuth } = require('./middleware/auth');
+
+const app = express();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const redisClient = createClient({ url: process.env.REDIS_URL });
@@ -15,6 +16,7 @@ redisClient.on('error', (err) => console.error('Redis error:', err));
 redisClient.connect();
 
 app.use(express.json());
+
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'yes' });
 });
@@ -45,13 +47,10 @@ app.post('/links', requireAuth, async (req, res) => {
       return res.status(201).json(result.rows[0]);
     } catch (err) {
       if (err.code === '23505') {
-        // unique_violation on slug — another request grabbed it first, retry
         continue;
       }
       console.error('Error creating link:', err);
-      return res
-        .status(500)
-        .json({ error: 'Something went wrong. Please try again.' });
+      return res.status(500).json({ error: 'Something went wrong. Please try again.' });
     }
   }
 
@@ -59,8 +58,6 @@ app.post('/links', requireAuth, async (req, res) => {
   res.status(500).json({ error: 'Something went wrong. Please try again.' });
 });
 
-<<<<<<< Updated upstream
-=======
 app.get('/links', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
@@ -78,9 +75,10 @@ app.get('/links', requireAuth, async (req, res) => {
 app.get('/links/:id', requireAuth, async (req, res) => {
   const { id } = req.params;
 
-   if (!UUID_REGEX.test(id)) {
+  if (!UUID_REGEX.test(id)) {
     return res.status(400).json({ error: 'Invalid link id' });
   }
+
   try {
     const result = await pool.query('SELECT id, slug, original_url, user_id, created_at FROM links WHERE id = $1', [id]);
 
@@ -101,12 +99,11 @@ app.get('/links/:id', requireAuth, async (req, res) => {
   }
 });
 
->>>>>>> Stashed changes
 app.get('/:slug', async (req, res) => {
   const { slug } = req.params;
 
   try {
-    let cached = null
+    let cached = null;
     try {
       cached = await redisClient.get(`slug:${slug}`);
     } catch (err) {
@@ -155,7 +152,7 @@ app.post('/auth/signup', async (req, res) => {
     return res.status(400).json({ error: 'email and password are required' });
   }
   const normalizedEmail = email.trim().toLowerCase();
-   if (password.length < 8) {
+  if (password.length < 8) {
     return res.status(400).json({ error: 'password must be at least 8 characters' });
   }
 
@@ -184,6 +181,7 @@ app.post('/auth/signin', async (req, res) => {
     return res.status(400).json({ error: 'email and password are required' });
   }
   const normalizedEmail = email.trim().toLowerCase();
+
   try {
     const result = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [normalizedEmail]);
 
@@ -208,31 +206,9 @@ app.post('/auth/signin', async (req, res) => {
   }
 });
 
-app.get('/links/:id', requireAuth, async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await pool.query('SELECT id, slug, original_url, user_id, created_at FROM links WHERE id = $1', [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Link not found' });
-    }
-
-    const link = result.rows[0];
-
-    if (link.user_id !== req.userId) {
-      return res.status(404).json({ error: 'Link not found' });
-    }
-
-    res.status(200).json(link);
-  } catch (err) {
-    console.error('Error fetching link:', err);
-    res.status(500).json({ error: 'Something went wrong. Please try again.' });
-  }
-});
-
 // DELETE /links/:slug intentionally removed for now.
 // Anyone who knows a slug could delete it with no ownership check,
 // since authentication doesn't exist yet. Will be re-added
 // once a link's owner can be verified against the authenticated user.
+
 module.exports = { app, pool, redisClient };

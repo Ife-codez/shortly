@@ -94,8 +94,6 @@ test('a user cannot fetch a link belonging to another user', async () => {
     .set('Authorization', `Bearer ${otherToken}`);
 
   expect(response.status).toBe(404);
-<<<<<<< Updated upstream
-=======
 });
 
 test('a new user sees an empty links list', async () => {
@@ -178,5 +176,4 @@ test('fetching a link with a malformed id returns 400, not 500', async () => {
     .set('Authorization', `Bearer ${signin.body.token}`);
 
   expect(response.status).toBe(400);
->>>>>>> Stashed changes
 });
