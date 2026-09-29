@@ -112,6 +112,29 @@ test('a new user sees an empty links list', async () => {
   expect(response.body).toEqual([]);
 });
 
+test('owner can fetch their own link and gets 200', async () => {
+  await request(app)
+    .post('/auth/signup')
+    .send({ email: 'authtest10@example.com', password: 'password123' });
+  const signin = await request(app)
+    .post('/auth/signin')
+    .send({ email: 'authtest10@example.com', password: 'password123' });
+  const token = signin.body.token;
+
+  const createResponse = await request(app)
+    .post('/links')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ url: 'https://example.com/auth-test-owned-fetch' });
+  const linkId = createResponse.body.id;
+
+  const response = await request(app)
+    .get(`/links/${linkId}`)
+    .set('Authorization', `Bearer ${token}`);
+
+  expect(response.status).toBe(200);
+  expect(response.body.id).toBe(linkId);
+});
+
 test('a user only sees their own links, not others', async () => {
   await request(app)
     .post('/auth/signup')
@@ -138,4 +161,19 @@ test('a user only sees their own links, not others', async () => {
 
   expect(response.status).toBe(200);
   expect(response.body).toEqual([]);
+});
+
+test('fetching a link with a malformed id returns 400, not 500', async () => {
+  await request(app)
+    .post('/auth/signup')
+    .send({ email: 'authtest11@example.com', password: 'password123' });
+  const signin = await request(app)
+    .post('/auth/signin')
+    .send({ email: 'authtest11@example.com', password: 'password123' });
+
+  const response = await request(app)
+    .get('/links/not-a-uuid')
+    .set('Authorization', `Bearer ${signin.body.token}`);
+
+  expect(response.status).toBe(400);
 });

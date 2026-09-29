@@ -7,6 +7,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
+  
   await pool.query("DELETE FROM click_events WHERE link_id IN (SELECT id FROM links WHERE slug LIKE 'test%' OR slug LIKE 'cache%')");
   await pool.query("DELETE FROM links WHERE slug LIKE 'test%' OR slug LIKE 'cache%'");
   await redisClient.del(['slug:testslug1', 'slug:testslug2', 'slug:cachetest1']);
