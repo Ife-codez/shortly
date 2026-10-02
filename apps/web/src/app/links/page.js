@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function LinksPage() {
   const [links, setLinks] = useState(null);
@@ -32,25 +33,55 @@ export default function LinksPage() {
       });
   }, [router]);
 
-  if (error) {
-    return <p>{error}</p>;
-  }
-
-  if (links === null) {
-    return <p>Loading...</p>;
-  }
-
-  if (links.length === 0) {
-    return <p>You haven&apos;t created any links yet.</p>;
-  }
-
   return (
-    <ul>
-      {links.map((link) => (
-        <li key={link.id}>
-          {link.slug} → {link.original_url}
-        </li>
-      ))}
-    </ul>
+    <div className="max-w-2xl mx-auto px-6 py-10">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight">Your links</h1>
+        <Link
+          href="/links/new"
+          className="gradient-bg text-white text-sm font-medium px-4 py-2 rounded-lg hover:opacity-90 transition-opacity"
+        >
+          New link
+        </Link>
+      </div>
+
+      {error && (
+        <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+
+      {!error && links === null && (
+        <p className="text-sm text-muted">Loading your links…</p>
+      )}
+
+      {!error && links !== null && links.length === 0 && (
+        <div className="text-center py-16 border border-dashed border-border rounded-xl">
+          <p className="text-sm text-muted mb-4">You haven&apos;t created any links yet.</p>
+          <Link
+            href="/links/new"
+            className="text-primary text-sm font-medium hover:underline"
+          >
+            Create your first link
+          </Link>
+        </div>
+      )}
+
+      {!error && links !== null && links.length > 0 && (
+        <ul className="divide-y divide-border">
+          {links.map((link) => (
+            <li key={link.id} className="py-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-ink">/{link.slug}</p>
+                <p className="text-sm text-muted truncate">{link.original_url}</p>
+              </div>
+              <p className="text-xs text-muted shrink-0">
+                {new Date(link.created_at).toLocaleDateString()}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
