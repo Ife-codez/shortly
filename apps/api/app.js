@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const { requireAuth } = require('./middleware/auth');
 
 const app = express();
+const cors = require('cors');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -15,6 +16,9 @@ const redisClient = createClient({ url: process.env.REDIS_URL });
 redisClient.on('error', (err) => console.error('Redis error:', err));
 redisClient.connect();
 
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+}));
 app.use(express.json());
 
 app.get('/health', (req, res) => {
