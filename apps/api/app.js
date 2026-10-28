@@ -6,7 +6,7 @@ const { generateUniqueSlug } = require('./lib/slug');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { requireAuth } = require('./middleware/auth');
-
+const { validateSignup } = require('./lib/validateSignup');
 const app = express();
 const cors = require('cors');
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -150,15 +150,14 @@ app.get('/:slug', async (req, res) => {
 });
 
 app.post('/auth/signup', async (req, res) => {
-  const { email, password } = req.body;
+  const validation = validateSignup(req.body ?? {});
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'email and password are required' });
+  if (!validation.valid) {
+    return res.status(400).json({ error: validation.error });
   }
-  const normalizedEmail = email.trim().toLowerCase();
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'password must be at least 8 characters' });
-  }
+
+  const normalizedEmail = validation.email;
+  const { password } = req.body;
 
   try {
     const passwordHash = await bcrypt.hash(password, 10);
@@ -179,10 +178,13 @@ app.post('/auth/signup', async (req, res) => {
 });
 
 app.post('/auth/signin', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body ?? {};
 
   if (!email || !password) {
     return res.status(400).json({ error: 'email and password are required' });
+  }
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    return res.status(400).json({ error: 'email and password must be text' });
   }
   const normalizedEmail = email.trim().toLowerCase();
 

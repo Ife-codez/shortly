@@ -177,3 +177,36 @@ test('fetching a link with a malformed id returns 400, not 500', async () => {
 
   expect(response.status).toBe(400);
 });
+
+describe('signup validation', () => {
+  test.each([
+    ['an email with no domain', { email: 'abc', password: 'password123' }],
+    ['an email missing the part after @', { email: 'abc@', password: 'password123' }],
+    ['an email containing a space', { email: 'a b@example.com', password: 'password123' }],
+    ['a numeric email', { email: 12345, password: 'password123' }],
+    ['an object as the email', { email: { a: 1 }, password: 'password123' }],
+    ['a numeric password', { email: 'authtest20@example.com', password: 12345678 }],
+    ['an array as the password', { email: 'authtest21@example.com', password: ['password123'] }],
+    ['a password shorter than 8 characters', { email: 'authtest22@example.com', password: 'short' }],
+    ['a password longer than 72 bytes', { email: 'authtest23@example.com', password: 'a'.repeat(73) }],
+  ])('rejects %s with a 400', async (_label, body) => {
+    const response = await request(app).post('/auth/signup').send(body);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBeDefined();
+  });
+
+  test('rejects a request with no body with a 400', async () => {
+    const response = await request(app).post('/auth/signup');
+
+    expect(response.status).toBe(400);
+  });
+});
+
+test('signin rejects a non-text email with a 400', async () => {
+  const response = await request(app)
+    .post('/auth/signin')
+    .send({ email: 12345, password: 'password123' });
+
+  expect(response.status).toBe(400);
+});
