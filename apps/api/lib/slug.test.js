@@ -44,8 +44,8 @@ test('generateUniqueSlug retries after a forced slug collision', async () => {
 
   // Plant a real row in the database using the "taken" slug
   await pool.query(
-    `INSERT INTO links (slug, original_url, custom) VALUES ($1, $2, $3)`,
-    [takenSlug, 'https://example.com/fake', false]
+    `INSERT INTO links (slug, original_url, custom, user_id) VALUES ($1, $2, $3, $4)`,
+    [takenSlug, 'https://example.com/fake', false, '00000000-0000-0000-0000-000000000000']
   );
 
   // Force generateSlug to return takenSlug first, then freeSlug second
