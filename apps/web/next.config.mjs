@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
+  turbopack: {},
+  
   webpack: (config) => {
     config.watchOptions = {
       poll: 800,
