@@ -40,6 +40,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
 
 volumes:
   pgdata:
