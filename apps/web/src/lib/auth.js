@@ -24,3 +24,25 @@ export function subscribeToAuth(callback) {
     window.removeEventListener('storage', callback);
   };
 }
+
+export class UnauthorizedError extends Error {}
+
+export async function authFetch(path, options = {}) {
+  const token = getToken();
+
+  if (!token) {
+    throw new UnauthorizedError('Not signed in');
+  }
+
+  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${path}`, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+  });
+
+  if (response.status === 401) {
+    clearToken();
+    throw new UnauthorizedError('Session expired');
+  }
+
+  return response;
+}

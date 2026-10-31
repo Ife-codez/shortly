@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { authFetch, UnauthorizedError } from '@/lib/auth';
 
 export default function NewLinkPage() {
   const [url, setUrl] = useState('');
@@ -15,19 +16,11 @@ export default function NewLinkPage() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/signin');
-      return;
-    }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/links`, {
+      const response = await authFetch('/links', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
 
@@ -43,12 +36,15 @@ export default function NewLinkPage() {
       setUrl('');
       setIsLoading(false);
     } catch (err) {
+      if (err instanceof UnauthorizedError) {
+        router.push('/signin');
+        return;
+      }
       console.error('Failed to create link:', err);
       setError('Something went wrong. Please try again.');
       setIsLoading(false);
     }
   }
-
   function handleCopy() {
     const shortUrl = `${process.env.NEXT_PUBLIC_API_URL}/${createdLink.slug}`;
     navigator.clipboard.writeText(shortUrl);
