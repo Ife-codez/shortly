@@ -1,31 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { clearToken } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
+import { useSyncExternalStore } from 'react';
+import { clearToken, hasToken, subscribeToAuth } from '@/lib/auth';
 
 export default function Nav() {
-  const [isSignedIn, setIsSignedIn] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    setIsSignedIn(!!localStorage.getItem('token'));
-
-    function handleAuthChange() {
-      setIsSignedIn(!!localStorage.getItem('token'));
-    }
-
-    window.addEventListener('auth-changed', handleAuthChange);
-    return () => window.removeEventListener('auth-changed', handleAuthChange);
-  }, []);
+  const isSignedIn = useSyncExternalStore(subscribeToAuth, hasToken, () => false);
 
   function handleSignOut() {
     clearToken();
-    setIsSignedIn(false);
     router.push('/signin');
   }
-
   return (
   <nav className="flex items-center gap-6 px-6 py-4 border-b border-border">
       <Link href="/links" className="text-lg font-semibold tracking-tight gradient-text">
